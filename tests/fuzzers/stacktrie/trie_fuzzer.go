@@ -25,6 +25,7 @@ import (
 	"io"
 	"sort"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/trie"
 	"golang.org/x/crypto/sha3"
@@ -143,7 +144,7 @@ func (f *fuzzer) fuzz() int {
 	var (
 		spongeA     = &spongeDb{sponge: sha3.NewLegacyKeccak256()}
 		dbA         = trie.NewDatabase(spongeA)
-		trieA       = trie.NewEmpty(dbA)
+		trieA, _    = trie.New(common.Hash{}, dbA)
 		spongeB     = &spongeDb{sponge: sha3.NewLegacyKeccak256()}
 		trieB       = trie.NewStackTrie(spongeB)
 		vals        kvs
@@ -185,7 +186,7 @@ func (f *fuzzer) fuzz() int {
 	sort.Sort(vals)
 	for _, kv := range vals {
 		if f.debugging {
-			fmt.Printf("{\"%#x\" , \"%#x\"} // stacktrie.Update\n", kv.k, kv.v)
+			fmt.Printf("{\"0x%x\" , \"0x%x\"} // stacktrie.Update\n", kv.k, kv.v)
 		}
 		trieB.Update(kv.k, kv.v)
 	}

@@ -33,7 +33,7 @@ type API struct {
 	Namespace     string      // namespace under which the rpc methods of Service are exposed
 	Version       string      // api version for DApp's
 	Service       interface{} // receiver instance which holds the methods
-	Public        bool        // deprecated - this field is no longer used, but retained for compatibility
+	Public        bool        // indication if the methods must be considered safe for public use
 	Authenticated bool        // whether the api should only be available behind authentication.
 }
 
@@ -61,10 +61,9 @@ type jsonWriter interface {
 type BlockNumber int64
 
 const (
-	FinalizedBlockNumber = BlockNumber(-3)
-	PendingBlockNumber   = BlockNumber(-2)
-	LatestBlockNumber    = BlockNumber(-1)
-	EarliestBlockNumber  = BlockNumber(0)
+	PendingBlockNumber  = BlockNumber(-2)
+	LatestBlockNumber   = BlockNumber(-1)
+	EarliestBlockNumber = BlockNumber(0)
 )
 
 // UnmarshalJSON parses the given JSON fragment into a BlockNumber. It supports:
@@ -88,9 +87,6 @@ func (bn *BlockNumber) UnmarshalJSON(data []byte) error {
 		return nil
 	case "pending":
 		*bn = PendingBlockNumber
-		return nil
-	case "finalized":
-		*bn = FinalizedBlockNumber
 		return nil
 	}
 
@@ -116,8 +112,6 @@ func (bn BlockNumber) MarshalText() ([]byte, error) {
 		return []byte("latest"), nil
 	case PendingBlockNumber:
 		return []byte("pending"), nil
-	case FinalizedBlockNumber:
-		return []byte("finalized"), nil
 	default:
 		return hexutil.Uint64(bn).MarshalText()
 	}
@@ -162,10 +156,6 @@ func (bnh *BlockNumberOrHash) UnmarshalJSON(data []byte) error {
 		return nil
 	case "pending":
 		bn := PendingBlockNumber
-		bnh.BlockNumber = &bn
-		return nil
-	case "finalized":
-		bn := FinalizedBlockNumber
 		bnh.BlockNumber = &bn
 		return nil
 	default:

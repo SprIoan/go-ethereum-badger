@@ -21,7 +21,9 @@
 package core
 
 import (
+	"io/ioutil"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -1754,7 +1756,11 @@ func testRepair(t *testing.T, tt *rewindTest, snapshots bool) {
 	// fmt.Println(tt.dump(true))
 
 	// Create a temporary persistent database
-	datadir := t.TempDir()
+	datadir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Failed to create temporary datadir: %v", err)
+	}
+	os.RemoveAll(datadir)
 
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(datadir, 0, 0, datadir, "", false)
 	if err != nil {
@@ -1878,7 +1884,11 @@ func TestIssue23496(t *testing.T) {
 	//log.Root().SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
 
 	// Create a temporary persistent database
-	datadir := t.TempDir()
+	datadir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Failed to create temporary datadir: %v", err)
+	}
+	os.RemoveAll(datadir)
 
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(datadir, 0, 0, datadir, "", false)
 	if err != nil {

@@ -19,7 +19,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -49,17 +49,17 @@ func TestVerification(t *testing.T) {
 
 func testVerification(t *testing.T, pubkey, sigdir string) {
 	// Data to verify
-	data, err := os.ReadFile("./testdata/vcheck/data.json")
+	data, err := ioutil.ReadFile("./testdata/vcheck/data.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Signatures, with and without comments, both trusted and untrusted
-	files, err := os.ReadDir(sigdir)
+	files, err := ioutil.ReadDir(sigdir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, f := range files {
-		sig, err := os.ReadFile(filepath.Join(sigdir, f.Name()))
+		sig, err := ioutil.ReadFile(filepath.Join(sigdir, f.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,7 +87,7 @@ func versionUint(v string) int {
 
 // TestMatching can be used to check that the regexps are correct
 func TestMatching(t *testing.T) {
-	data, _ := os.ReadFile("./testdata/vcheck/vulnerabilities.json")
+	data, _ := ioutil.ReadFile("./testdata/vcheck/vulnerabilities.json")
 	var vulns []vulnJson
 	if err := json.Unmarshal(data, &vulns); err != nil {
 		t.Fatal(err)

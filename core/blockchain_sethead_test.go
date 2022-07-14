@@ -21,7 +21,9 @@ package core
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -51,7 +53,6 @@ type rewindTest struct {
 	expHeadBlock       uint64 // Block number of the expected head full block
 }
 
-//nolint:unused
 func (tt *rewindTest) dump(crash bool) string {
 	buffer := new(strings.Builder)
 
@@ -1954,7 +1955,11 @@ func testSetHead(t *testing.T, tt *rewindTest, snapshots bool) {
 	// fmt.Println(tt.dump(false))
 
 	// Create a temporary persistent database
-	datadir := t.TempDir()
+	datadir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Failed to create temporary datadir: %v", err)
+	}
+	os.RemoveAll(datadir)
 
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(datadir, 0, 0, datadir, "", false)
 	if err != nil {

@@ -53,11 +53,11 @@ type SecureTrie struct {
 // Loaded nodes are kept around until their 'cache generation' expires.
 // A new cache generation is created by each call to Commit.
 // cachelimit sets the number of past cache generations to keep.
-func NewSecure(owner common.Hash, root common.Hash, db *Database) (*SecureTrie, error) {
+func NewSecure(root common.Hash, db *Database) (*SecureTrie, error) {
 	if db == nil {
 		panic("trie.NewSecure called without a database")
 	}
-	trie, err := New(owner, root, db)
+	trie, err := New(root, db)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (t *SecureTrie) TryGetNode(path []byte) ([]byte, int, error) {
 	return t.trie.TryGetNode(path)
 }
 
-// TryUpdateAccount account will abstract the write of an account to the
+// TryUpdate account will abstract the write of an account to the
 // secure trie.
 func (t *SecureTrie) TryUpdateAccount(key []byte, acc *types.StateAccount) error {
 	hk := t.hashKey(key)
@@ -185,10 +185,8 @@ func (t *SecureTrie) Hash() common.Hash {
 
 // Copy returns a copy of SecureTrie.
 func (t *SecureTrie) Copy() *SecureTrie {
-	return &SecureTrie{
-		trie:        *t.trie.Copy(),
-		secKeyCache: t.secKeyCache,
-	}
+	cpy := *t
+	return &cpy
 }
 
 // NodeIterator returns an iterator that returns nodes of the underlying trie. Iteration

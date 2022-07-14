@@ -452,7 +452,7 @@ type ignoredField struct {
 
 var (
 	veryBigInt = new(big.Int).Add(
-		new(big.Int).Lsh(big.NewInt(0xFFFFFFFFFFFFFF), 16),
+		big.NewInt(0).Lsh(big.NewInt(0xFFFFFFFFFFFFFF), 16),
 		big.NewInt(0xFFFF),
 	)
 	veryVeryBigInt = new(big.Int).Exp(veryBigInt, big.NewInt(8), nil)
@@ -1203,7 +1203,7 @@ func encodeTestSlice(n uint) []byte {
 }
 
 func unhex(str string) []byte {
-	b, err := hex.DecodeString(strings.ReplaceAll(str, " ", ""))
+	b, err := hex.DecodeString(strings.Replace(str, " ", "", -1))
 	if err != nil {
 		panic(fmt.Sprintf("invalid hex string: %q", str))
 	}

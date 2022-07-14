@@ -1,4 +1,4 @@
-// Copyright 2019 The go-ethereum Authors
+// Copyright 2016 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -19,7 +19,6 @@ package les
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -74,7 +73,7 @@ type LightEthereum struct {
 	eventMux       *event.TypeMux
 	engine         consensus.Engine
 	accountManager *accounts.Manager
-	netRPCService  *ethapi.NetAPI
+	netRPCService  *ethapi.PublicNetAPI
 
 	p2pServer  *p2p.Server
 	p2pConfig  *p2p.Config
@@ -93,17 +92,11 @@ func New(stack *node.Node, config *ethconfig.Config) (*LightEthereum, error) {
 	if err != nil {
 		return nil, err
 	}
-	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlockWithOverride(chainDb, config.Genesis, config.OverrideGrayGlacier, config.OverrideTerminalTotalDifficulty)
+	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlockWithOverride(chainDb, config.Genesis, config.OverrideArrowGlacier, config.OverrideTerminalTotalDifficulty)
 	if _, isCompat := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !isCompat {
 		return nil, genesisErr
 	}
-	log.Info("")
-	log.Info(strings.Repeat("-", 153))
-	for _, line := range strings.Split(chainConfig.String(), "\n") {
-		log.Info(line)
-	}
-	log.Info(strings.Repeat("-", 153))
-	log.Info("")
+	log.Info("Initialised chain configuration", "config", chainConfig)
 
 	peers := newServerPeerSet()
 	merger := consensus.NewMerger(chainDb)
@@ -189,7 +182,7 @@ func New(stack *node.Node, config *ethconfig.Config) (*LightEthereum, error) {
 		leth.blockchain.DisableCheckFreq()
 	}
 
-	leth.netRPCService = ethapi.NewNetAPI(leth.p2pServer, leth.config.NetworkId)
+	leth.netRPCService = ethapi.NewPublicNetAPI(leth.p2pServer, leth.config.NetworkId)
 
 	// Register the backend on the node
 	stack.RegisterAPIs(leth.APIs())
@@ -296,26 +289,32 @@ func (s *LightEthereum) APIs() []rpc.API {
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   &LightDummyAPI{},
+			Public:    true,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   downloader.NewDownloaderAPI(s.handler.downloader, s.eventMux),
+			Service:   downloader.NewPublicDownloaderAPI(s.handler.downloader, s.eventMux),
+			Public:    true,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   filters.NewFilterAPI(s.ApiBackend, true, 5*time.Minute),
+			Service:   filters.NewPublicFilterAPI(s.ApiBackend, true, 5*time.Minute),
+			Public:    true,
 		}, {
 			Namespace: "net",
 			Version:   "1.0",
 			Service:   s.netRPCService,
+			Public:    true,
 		}, {
 			Namespace: "les",
 			Version:   "1.0",
-			Service:   NewLightAPI(&s.lesCommons),
+			Service:   NewPrivateLightAPI(&s.lesCommons),
+			Public:    false,
 		}, {
 			Namespace: "vflux",
 			Version:   "1.0",
 			Service:   s.serverPool.API(),
+			Public:    false,
 		},
 	}...)
 }

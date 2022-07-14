@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
@@ -49,7 +50,8 @@ func TestFreezerModify(t *testing.T) {
 	}
 
 	tables := map[string]bool{"raw": true, "rlp": false}
-	f, _ := newFreezerForTesting(t, tables)
+	f, dir := newFreezerForTesting(t, tables)
+	defer os.RemoveAll(dir)
 	defer f.Close()
 
 	// Commit test data.
@@ -95,6 +97,7 @@ func TestFreezerModifyRollback(t *testing.T) {
 	t.Parallel()
 
 	f, dir := newFreezerForTesting(t, freezerTestTableDef)
+	defer os.RemoveAll(dir)
 
 	theError := errors.New("oops")
 	_, err := f.ModifyAncients(func(op ethdb.AncientWriteOp) error {
@@ -113,7 +116,7 @@ func TestFreezerModifyRollback(t *testing.T) {
 
 	// Reopen and check that the rolled-back data doesn't reappear.
 	tables := map[string]bool{"test": true}
-	f2, err := NewFreezer(dir, "", false, 2049, tables)
+	f2, err := newFreezer(dir, "", false, 2049, tables)
 	if err != nil {
 		t.Fatalf("can't reopen freezer after failed ModifyAncients: %v", err)
 	}
@@ -125,7 +128,8 @@ func TestFreezerModifyRollback(t *testing.T) {
 func TestFreezerConcurrentModifyRetrieve(t *testing.T) {
 	t.Parallel()
 
-	f, _ := newFreezerForTesting(t, freezerTestTableDef)
+	f, dir := newFreezerForTesting(t, freezerTestTableDef)
+	defer os.RemoveAll(dir)
 	defer f.Close()
 
 	var (
@@ -185,7 +189,8 @@ func TestFreezerConcurrentModifyRetrieve(t *testing.T) {
 
 // This test runs ModifyAncients and TruncateHead concurrently with each other.
 func TestFreezerConcurrentModifyTruncate(t *testing.T) {
-	f, _ := newFreezerForTesting(t, freezerTestTableDef)
+	f, dir := newFreezerForTesting(t, freezerTestTableDef)
+	defer os.RemoveAll(dir)
 	defer f.Close()
 
 	var item = make([]byte, 256)
@@ -251,10 +256,14 @@ func TestFreezerConcurrentModifyTruncate(t *testing.T) {
 
 func TestFreezerReadonlyValidate(t *testing.T) {
 	tables := map[string]bool{"a": true, "b": true}
-	dir := t.TempDir()
+	dir, err := ioutil.TempDir("", "freezer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
 	// Open non-readonly freezer and fill individual tables
 	// with different amount of data.
-	f, err := NewFreezer(dir, "", false, 2049, tables)
+	f, err := newFreezer(dir, "", false, 2049, tables)
 	if err != nil {
 		t.Fatal("can't open freezer", err)
 	}
@@ -277,19 +286,22 @@ func TestFreezerReadonlyValidate(t *testing.T) {
 
 	// Re-openening as readonly should fail when validating
 	// table lengths.
-	_, err = NewFreezer(dir, "", true, 2049, tables)
+	f, err = newFreezer(dir, "", true, 2049, tables)
 	if err == nil {
 		t.Fatal("readonly freezer should fail with differing table lengths")
 	}
 }
 
-func newFreezerForTesting(t *testing.T, tables map[string]bool) (*Freezer, string) {
+func newFreezerForTesting(t *testing.T, tables map[string]bool) (*freezer, string) {
 	t.Helper()
 
-	dir := t.TempDir()
+	dir, err := ioutil.TempDir("", "freezer")
+	if err != nil {
+		t.Fatal(err)
+	}
 	// note: using low max table size here to ensure the tests actually
 	// switch between multiple files.
-	f, err := NewFreezer(dir, "", false, 2049, tables)
+	f, err := newFreezer(dir, "", false, 2049, tables)
 	if err != nil {
 		t.Fatal("can't open freezer", err)
 	}
@@ -297,7 +309,7 @@ func newFreezerForTesting(t *testing.T, tables map[string]bool) (*Freezer, strin
 }
 
 // checkAncientCount verifies that the freezer contains n items.
-func checkAncientCount(t *testing.T, f *Freezer, kind string, n uint64) {
+func checkAncientCount(t *testing.T, f *freezer, kind string, n uint64) {
 	t.Helper()
 
 	if frozen, _ := f.Ancients(); frozen != n {
@@ -338,8 +350,16 @@ func TestRenameWindows(t *testing.T) {
 	)
 
 	// Create 2 temp dirs
-	dir1 := t.TempDir()
-	dir2 := t.TempDir()
+	dir1, err := os.MkdirTemp("", "rename-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(dir1)
+	dir2, err := os.MkdirTemp("", "rename-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(dir2)
 
 	// Create file in dir1 and fill with data
 	f, err := os.Create(path.Join(dir1, fname))

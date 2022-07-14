@@ -38,16 +38,19 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/node"
-	"github.com/urfave/cli/v2"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var (
-	initCommand = &cli.Command{
-		Action:    initGenesis,
+	initCommand = cli.Command{
+		Action:    utils.MigrateFlags(initGenesis),
 		Name:      "init",
 		Usage:     "Bootstrap and initialize a new genesis block",
 		ArgsUsage: "<genesisPath>",
-		Flags:     utils.DatabasePathFlags,
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The init command initializes a new genesis block and definition for the network.
 This is a destructive action and changes the network in which you will be
@@ -55,21 +58,29 @@ participating.
 
 It expects the genesis file as argument.`,
 	}
-	dumpGenesisCommand = &cli.Command{
-		Action:    dumpGenesis,
+	dumpGenesisCommand = cli.Command{
+		Action:    utils.MigrateFlags(dumpGenesis),
 		Name:      "dumpgenesis",
 		Usage:     "Dumps genesis block JSON configuration to stdout",
 		ArgsUsage: "",
-		Flags:     utils.NetworkFlags,
+		Flags: []cli.Flag{
+			utils.MainnetFlag,
+			utils.RopstenFlag,
+			utils.SepoliaFlag,
+			utils.RinkebyFlag,
+			utils.GoerliFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The dumpgenesis command dumps the genesis block configuration in JSON format to stdout.`,
 	}
-	importCommand = &cli.Command{
-		Action:    importChain,
+	importCommand = cli.Command{
+		Action:    utils.MigrateFlags(importChain),
 		Name:      "import",
 		Usage:     "Import a blockchain file",
 		ArgsUsage: "<filename> (<filename 2> ... <filename N>) ",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
 			utils.GCModeFlag,
@@ -91,7 +102,8 @@ The dumpgenesis command dumps the genesis block configuration in JSON format to 
 			utils.MetricsInfluxDBBucketFlag,
 			utils.MetricsInfluxDBOrganizationFlag,
 			utils.TxLookupLimitFlag,
-		}, utils.DatabasePathFlags...),
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The import command imports blocks from an RLP-encoded form. The form can be one file
 with several RLP-encoded blocks, or several files can be used.
@@ -99,15 +111,17 @@ with several RLP-encoded blocks, or several files can be used.
 If only one file is used, import error will result in failure. If several files are used,
 processing will proceed even if an individual RLP-file import failure occurs.`,
 	}
-	exportCommand = &cli.Command{
-		Action:    exportChain,
+	exportCommand = cli.Command{
+		Action:    utils.MigrateFlags(exportChain),
 		Name:      "export",
 		Usage:     "Export blockchain into file",
 		ArgsUsage: "<filename> [<blockNumFirst> <blockNumLast>]",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
-		}, utils.DatabasePathFlags...),
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 Requires a first argument of the file to write to.
 Optional second and third arguments control the first and
@@ -115,40 +129,45 @@ last block to write. In this mode, the file will be appended
 if already existing. If the file ends with .gz, the output will
 be gzipped.`,
 	}
-	importPreimagesCommand = &cli.Command{
-		Action:    importPreimages,
+	importPreimagesCommand = cli.Command{
+		Action:    utils.MigrateFlags(importPreimages),
 		Name:      "import-preimages",
 		Usage:     "Import the preimage database from an RLP stream",
 		ArgsUsage: "<datafile>",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
-		}, utils.DatabasePathFlags...),
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The import-preimages command imports hash preimages from an RLP encoded stream.
 It's deprecated, please use "geth db import" instead.
 `,
 	}
-	exportPreimagesCommand = &cli.Command{
-		Action:    exportPreimages,
+	exportPreimagesCommand = cli.Command{
+		Action:    utils.MigrateFlags(exportPreimages),
 		Name:      "export-preimages",
 		Usage:     "Export the preimage database into an RLP stream",
 		ArgsUsage: "<dumpfile>",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
-		}, utils.DatabasePathFlags...),
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The export-preimages command exports hash preimages to an RLP encoded stream.
 It's deprecated, please use "geth db export" instead.
 `,
 	}
-	dumpCommand = &cli.Command{
-		Action:    dump,
+	dumpCommand = cli.Command{
+		Action:    utils.MigrateFlags(dump),
 		Name:      "dump",
 		Usage:     "Dump a specific block from storage",
 		ArgsUsage: "[? <blockHash> | <blockNum>]",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.IterativeOutputFlag,
 			utils.ExcludeCodeFlag,
@@ -156,7 +175,8 @@ It's deprecated, please use "geth db export" instead.
 			utils.IncludeIncompletesFlag,
 			utils.StartKeyFlag,
 			utils.DumpLimitFlag,
-		}, utils.DatabasePathFlags...),
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 This command dumps out the state for a given block (or latest, if none provided).
 `,
@@ -166,12 +186,10 @@ This command dumps out the state for a given block (or latest, if none provided)
 // initGenesis will initialise the given JSON format genesis file and writes it as
 // the zero'd block (i.e. genesis) or will fail hard if it can't succeed.
 func initGenesis(ctx *cli.Context) error {
-	if ctx.Args().Len() != 1 {
-		utils.Fatalf("need genesis.json file as the only argument")
-	}
+	// Make sure we have a valid genesis JSON
 	genesisPath := ctx.Args().First()
 	if len(genesisPath) == 0 {
-		utils.Fatalf("invalid path to genesis file")
+		utils.Fatalf("Must supply path to genesis JSON file")
 	}
 	file, err := os.Open(genesisPath)
 	if err != nil {
@@ -186,8 +204,9 @@ func initGenesis(ctx *cli.Context) error {
 	// Open and initialise both full and light databases
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
+
 	for _, name := range []string{"chaindata", "lightchaindata"} {
-		chaindb, err := stack.OpenDatabaseWithFreezer(name, 0, 0, ctx.String(utils.AncientFlag.Name), "", false)
+		chaindb, err := stack.OpenDatabase(name, 0, 0, "", false)
 		if err != nil {
 			utils.Fatalf("Failed to open database: %v", err)
 		}
@@ -214,7 +233,7 @@ func dumpGenesis(ctx *cli.Context) error {
 }
 
 func importChain(ctx *cli.Context) error {
-	if ctx.Args().Len() < 1 {
+	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
 	// Start metrics export if enabled
@@ -248,13 +267,13 @@ func importChain(ctx *cli.Context) error {
 
 	var importErr error
 
-	if ctx.Args().Len() == 1 {
+	if len(ctx.Args()) == 1 {
 		if err := utils.ImportChain(chain, ctx.Args().First()); err != nil {
 			importErr = err
 			log.Error("Import error", "err", err)
 		}
 	} else {
-		for _, arg := range ctx.Args().Slice() {
+		for _, arg := range ctx.Args() {
 			if err := utils.ImportChain(chain, arg); err != nil {
 				importErr = err
 				log.Error("Import error", "file", arg, "err", err)
@@ -265,7 +284,6 @@ func importChain(ctx *cli.Context) error {
 	fmt.Printf("Import done in %v.\n\n", time.Since(start))
 
 	// Output pre-compaction stats mostly to see the import trashing
-	showLeveldbStats(db)
 
 	// Print the memory statistics used by the importing
 	mem := new(runtime.MemStats)
@@ -276,7 +294,7 @@ func importChain(ctx *cli.Context) error {
 	fmt.Printf("Allocations:   %.3f million\n", float64(mem.Mallocs)/1000000)
 	fmt.Printf("GC pause:      %v\n\n", time.Duration(mem.PauseTotalNs))
 
-	if ctx.Bool(utils.NoCompactionFlag.Name) {
+	if ctx.GlobalBool(utils.NoCompactionFlag.Name) {
 		return nil
 	}
 
@@ -288,12 +306,11 @@ func importChain(ctx *cli.Context) error {
 	}
 	fmt.Printf("Compaction done in %v.\n\n", time.Since(start))
 
-	showLeveldbStats(db)
 	return importErr
 }
 
 func exportChain(ctx *cli.Context) error {
-	if ctx.Args().Len() < 1 {
+	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
 
@@ -305,7 +322,7 @@ func exportChain(ctx *cli.Context) error {
 
 	var err error
 	fp := ctx.Args().First()
-	if ctx.Args().Len() < 3 {
+	if len(ctx.Args()) < 3 {
 		err = utils.ExportChain(chain, fp)
 	} else {
 		// This can be improved to allow for numbers larger than 9223372036854775807
@@ -332,7 +349,7 @@ func exportChain(ctx *cli.Context) error {
 
 // importPreimages imports preimage data from the specified file.
 func importPreimages(ctx *cli.Context) error {
-	if ctx.Args().Len() < 1 {
+	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
 
@@ -351,7 +368,7 @@ func importPreimages(ctx *cli.Context) error {
 
 // exportPreimages dumps the preimage data to specified json file in streaming way.
 func exportPreimages(ctx *cli.Context) error {
-	if ctx.Args().Len() < 1 {
+	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
 	stack, _ := makeConfigNode(ctx)

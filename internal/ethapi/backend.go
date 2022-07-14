@@ -65,7 +65,6 @@ type Backend interface {
 	BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error)
 	StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error)
 	StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error)
-	PendingBlockAndReceipts() (*types.Block, types.Receipts)
 	GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error)
 	GetTd(ctx context.Context, hash common.Hash) *big.Int
 	GetEVM(ctx context.Context, msg core.Message, state *state.StateDB, header *types.Header, vmConfig *vm.Config) (*vm.EVM, func() error, error)
@@ -102,31 +101,42 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 		{
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewEthereumAPI(apiBackend),
+			Service:   NewPublicEthereumAPI(apiBackend),
+			Public:    true,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewBlockChainAPI(apiBackend),
+			Service:   NewPublicBlockChainAPI(apiBackend),
+			Public:    true,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewTransactionAPI(apiBackend, nonceLock),
+			Service:   NewPublicTransactionPoolAPI(apiBackend, nonceLock),
+			Public:    true,
 		}, {
 			Namespace: "txpool",
 			Version:   "1.0",
-			Service:   NewTxPoolAPI(apiBackend),
+			Service:   NewPublicTxPoolAPI(apiBackend),
+			Public:    true,
 		}, {
 			Namespace: "debug",
 			Version:   "1.0",
-			Service:   NewDebugAPI(apiBackend),
+			Service:   NewPublicDebugAPI(apiBackend),
+			Public:    true,
+		}, {
+			Namespace: "debug",
+			Version:   "1.0",
+			Service:   NewPrivateDebugAPI(apiBackend),
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewEthereumAccountAPI(apiBackend.AccountManager()),
+			Service:   NewPublicAccountAPI(apiBackend.AccountManager()),
+			Public:    true,
 		}, {
 			Namespace: "personal",
 			Version:   "1.0",
-			Service:   NewPersonalAccountAPI(apiBackend, nonceLock),
+			Service:   NewPrivateAccountAPI(apiBackend, nonceLock),
+			Public:    false,
 		},
 	}
 }

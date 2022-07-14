@@ -12,17 +12,18 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>
 
 package rawdb
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 )
 
 func TestReadWriteFreezerTableMeta(t *testing.T) {
-	f, err := os.CreateTemp(os.TempDir(), "*")
+	f, err := ioutil.TempFile(os.TempDir(), "*")
 	if err != nil {
 		t.Fatalf("Failed to create file %v", err)
 	}
@@ -43,7 +44,7 @@ func TestReadWriteFreezerTableMeta(t *testing.T) {
 }
 
 func TestInitializeFreezerTableMeta(t *testing.T) {
-	f, err := os.CreateTemp(os.TempDir(), "*")
+	f, err := ioutil.TempFile(os.TempDir(), "*")
 	if err != nil {
 		t.Fatalf("Failed to create file %v", err)
 	}

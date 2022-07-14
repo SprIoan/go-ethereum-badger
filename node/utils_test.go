@@ -47,6 +47,8 @@ type InstrumentedService struct {
 
 	startHook func()
 	stopHook  func()
+
+	protocols []p2p.Protocol
 }
 
 func (s *InstrumentedService) Start() error {
@@ -100,10 +102,12 @@ func (f *FullService) APIs() []rpc.API {
 		{
 			Namespace: "debug",
 			Version:   "1.0",
+			Public:    true,
 		},
 		{
 			Namespace: "net",
 			Version:   "1.0",
+			Public:    true,
 		},
 	}
 }

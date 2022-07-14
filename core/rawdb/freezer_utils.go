@@ -18,6 +18,7 @@ package rawdb
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -29,7 +30,7 @@ import (
 // It is perfectly valid to have destPath == srcPath.
 func copyFrom(srcPath, destPath string, offset uint64, before func(f *os.File) error) error {
 	// Create a temp file in the same dir where we want it to wind up
-	f, err := os.CreateTemp(filepath.Dir(destPath), "*")
+	f, err := ioutil.TempFile(filepath.Dir(destPath), "*")
 	if err != nil {
 		return err
 	}
